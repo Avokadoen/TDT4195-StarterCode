@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pathlib
 import numpy as np
+import time
 from utils import read_im, save_im, normalize
 output_dir = pathlib.Path("image_solutions")
 output_dir.mkdir(exist_ok=True)
@@ -10,8 +11,7 @@ im = read_im(pathlib.Path("images", "lake.jpg"))
 plt.imshow(im)
 
 
-def convolve_im(im, kernel,
-                ):
+def convolve_im(im, kernel):
     """ A function that convolves im with kernel
 
     Args:
@@ -23,7 +23,46 @@ def convolve_im(im, kernel,
     """
     assert len(im.shape) == 3
 
-    return im
+    # Rotate kernel
+    cKernel = kernel.copy()
+    kLen = len(kernel)
+    for y in range(kLen):
+        for x in range(kLen):
+            cKernel[y][x] = kernel[kLen - y - 1][kLen - x - 1]
+
+    # Will get the rgb value at the give coordinates, if we request index outside of
+    # list it will return a zero vector
+    def zero_pad(l, y, x):
+        # TODO: this is kind of abusing exceptions, use length instead to do this
+        try:
+            return l[y][x]
+        except IndexError:
+            return [0, 0, 0]
+
+    # copy image
+    imCopy = im.copy()
+
+    # We assume we always perform the convolution in the center of the kernel
+    # and that the kernel length is odd
+    def convolve(y, x): 
+        startY = y - kLen // 2
+        startX = x - kLen // 2
+
+        output = [0, 0, 0]
+        for i in range(kLen):
+            for j in range(kLen):
+                im_rgb = zero_pad(im, startY + i, startX + j)
+                output[0] += im_rgb[0] * cKernel[i][j]
+                output[1] += im_rgb[1] * cKernel[i][j]
+                output[2] += im_rgb[2] * cKernel[i][j]
+
+        return output    
+
+    for y in range(len(im)):
+        for x in range(len(im[y])):
+            imCopy[y][x] = convolve(y, x)
+
+    return imCopy
 
 
 # Define the convolutional kernels
